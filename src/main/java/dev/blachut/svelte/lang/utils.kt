@@ -11,6 +11,7 @@ import com.intellij.psi.TokenType
 import com.intellij.polySymbols.context.PolyContext
 import com.intellij.polySymbols.context.PolyContext.Companion.KIND_FRAMEWORK
 import com.intellij.xml.util.HtmlUtil
+import com.intellij.xml.util.HtmlUtil.LANG_ATTRIBUTE_NAME
 import dev.blachut.svelte.lang.psi.SvelteHtmlFile
 import dev.blachut.svelte.lang.psi.SvelteHtmlTag
 

@@ -18,20 +18,24 @@ class SvelteFragment(node: ASTNode) : SveltePsiElement(node), XmlElement {
     return XmlPsiUtil.processXmlElements(this, processor, false)
   }
 
-  override fun processDeclarations(processor: PsiScopeProcessor,
-                                   state: ResolveState,
-                                   lastParent: PsiElement?,
-                                   place: PsiElement): Boolean {
+  override fun processDeclarations(
+    processor: PsiScopeProcessor,
+    state: ResolveState,
+    lastParent: PsiElement?,
+    place: PsiElement
+  ): Boolean {
     return processConstTagDeclarations(processor, state, lastParent, place)
   }
 }
 
-internal fun XmlElement.processConstTagDeclarations(processor: PsiScopeProcessor,
-                                                    state: ResolveState,
-                                                    lastParent: PsiElement?,
-                                                    place: PsiElement): Boolean {
+internal fun XmlElement.processConstTagDeclarations(
+  processor: PsiScopeProcessor,
+  state: ResolveState,
+  lastParent: PsiElement?,
+  place: PsiElement
+): Boolean {
   for (element in children) {
-    if (element.elementType == SvelteJSLazyElementTypes.CONTENT_EXPRESSION) {
+    if (SvelteJSLazyElementTypes.CONTENT_EXPRESSION matches element.elementType) {
       val visitor = object : JSRecursiveWalkingElementVisitor() {
         var result = true
 

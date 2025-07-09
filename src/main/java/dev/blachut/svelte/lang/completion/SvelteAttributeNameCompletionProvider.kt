@@ -75,8 +75,7 @@ class SvelteAttributeNameCompletionProvider : CompletionProvider<CompletionParam
       .let {
         if (priority != null) {
           PrioritizedLookupElement.withPriority(it, priority.toDouble())
-        }
-        else {
+        } else {
           it
         }
       }

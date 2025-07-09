@@ -17,8 +17,10 @@ import icons.SvelteIcons
 
 class SvelteKeywordCompletionProvider : CompletionProvider<CompletionParameters>() {
   private val symbolTokens = setOf(JSTokenTypes.SHARP, JSTokenTypes.COLON, JSTokenTypes.DIV, JSTokenTypes.AT)
-  private val completions = listOf("#if", "#each", "#await", "#key", "#snippet", ":else", ":then", ":catch",
-                                   "@const", "@render", "@html", "@debug")
+  private val completions = listOf(
+    "#if", "#each", "#await", "#key", "#snippet", ":else", ":then", ":catch",
+    "@const", "@render", "@html", "@debug"
+  )
 
   override fun addCompletions(
     parameters: CompletionParameters,
@@ -26,7 +28,7 @@ class SvelteKeywordCompletionProvider : CompletionProvider<CompletionParameters>
     result: CompletionResultSet,
   ) {
     val expression =
-      parameters.position.parents(false).find { it.elementType == SvelteJSLazyElementTypes.CONTENT_EXPRESSION }!!
+      parameters.position.parents(false).find { SvelteJSLazyElementTypes.CONTENT_EXPRESSION matches it.elementType }!!
     if (expression.firstChild.siblings().any { SvelteTokenTypes.KEYWORDS.contains(it.elementType) }) {
       return
     }
@@ -34,8 +36,7 @@ class SvelteKeywordCompletionProvider : CompletionProvider<CompletionParameters>
     val token = parameters.position.prevLeaf()
     val newResult = if (token != null && symbolTokens.contains(token.elementType)) {
       result.withPrefixMatcher(token.text + result.prefixMatcher.prefix)
-    }
-    else {
+    } else {
       result
     }
 

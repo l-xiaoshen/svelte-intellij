@@ -9,11 +9,21 @@ import com.intellij.lang.javascript.parsing.JavaScriptParser
 import com.intellij.psi.ParsingDiagnostics
 import com.intellij.psi.PsiElement
 import com.intellij.psi.tree.ILazyParseableElementType
-import dev.blachut.svelte.lang.SvelteJSLanguage
+import dev.blachut.svelte.lang.SvelteLanguageMode
 import dev.blachut.svelte.lang.parsing.html.SvelteJSExpressionLexer
 
-// TODO Merge SvelteJSBlockLazyElementType & SvelteJSLazyElementType
-abstract class SvelteJSLazyElementType(debugName: String) : ILazyParseableElementType(debugName, SvelteJSLanguage.INSTANCE) {
+interface SvelteLazyElementType {
+  val noTokensErrorMessage: String
+  val assumeExternalBraces: Boolean get() = true
+
+
+   fun parseTokens(builder: PsiBuilder, parser: JavaScriptParser, mode: SvelteLanguageMode)
+
+}
+
+
+abstract class SvelteJSLazyElementType(debugName: String, val mode: SvelteLanguageMode) :
+  ILazyParseableElementType(debugName, mode.language) {
   protected abstract val noTokensErrorMessage: String
   protected open val excessTokensErrorMessage = "Unexpected token"
 
@@ -24,24 +34,29 @@ abstract class SvelteJSLazyElementType(debugName: String) : ILazyParseableElemen
     return SvelteJSLazyPsiElement(this, text)
   }
 
+
   override fun doParseContents(chameleon: ASTNode, psi: PsiElement): ASTNode {
+    val language = mode.language
+
     val project = psi.project
     val lexer = SvelteJSExpressionLexer(assumeExternalBraces)
-    val builder = PsiBuilderFactory.getInstance().createBuilder(project, chameleon, lexer, SvelteJSLanguage.INSTANCE, chameleon.chars)
+    val builder = PsiBuilderFactory.getInstance().createBuilder(project, chameleon, lexer, language, chameleon.chars)
+//    builder.putUserData(SvelteLanguage.LANG_MODE, mode)
     val startTime = System.nanoTime()
-    val parser = JSLanguageUtil.createJSParser(SvelteJSLanguage.INSTANCE, builder)
+    val parser = JSLanguageUtil.createJSParser(language, builder)
 
     val rootMarker = builder.mark()
 
+
+
     if (builder.eof()) {
       builder.error(noTokensErrorMessage)
-    }
-    else {
+    } else {
       if (!assumeExternalBraces) {
         builder.remapCurrentToken(JSTokenTypes.LBRACE)
         builder.advanceLexer()
       }
-      parseTokens(builder, parser)
+      parseTokens(builder, parser, mode)
       if (!assumeExternalBraces) {
         if (builder.tokenType == SvelteTokenTypes.END_MUSTACHE) {
           builder.remapCurrentToken(JSTokenTypes.RBRACE)
@@ -59,7 +74,7 @@ abstract class SvelteJSLazyElementType(debugName: String) : ILazyParseableElemen
     return result
   }
 
-  protected abstract fun parseTokens(builder: PsiBuilder, parser: JavaScriptParser)
+  protected abstract fun parseTokens(builder: PsiBuilder, parser: JavaScriptParser, mode: SvelteLanguageMode)
 
   private fun ensureEof(builder: PsiBuilder) {
     if (!builder.eof()) {

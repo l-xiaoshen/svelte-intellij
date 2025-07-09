@@ -15,7 +15,8 @@ class SvelteCompletionContributor : CompletionContributor() {
   init {
     extend(
       CompletionType.BASIC,
-      psiElement(XmlTokenType.XML_NAME).withParent(XmlPatterns.xmlAttribute()).inFile(psiFile(SvelteHtmlFile::class.java)),
+      psiElement(XmlTokenType.XML_NAME).withParent(XmlPatterns.xmlAttribute())
+        .inFile(psiFile(SvelteHtmlFile::class.java)),
       SvelteAttributeNameCompletionProvider()
     )
     extend(
@@ -26,7 +27,15 @@ class SvelteCompletionContributor : CompletionContributor() {
     extend(
       CompletionType.BASIC,
       psiElement(JSTokenTypes.IDENTIFIER)
-        .withAncestor(2, psiElement(SvelteJSLazyElementTypes.CONTENT_EXPRESSION)).inFile(psiFile(SvelteHtmlFile::class.java)),
+        .withAncestor(2, psiElement(SvelteJSLazyElementTypes.CONTENT_EXPRESSION.typescript))
+        .inFile(psiFile(SvelteHtmlFile::class.java)),
+      SvelteKeywordCompletionProvider()
+    )
+    extend(
+      CompletionType.BASIC,
+      psiElement(JSTokenTypes.IDENTIFIER)
+        .withAncestor(2, psiElement(SvelteJSLazyElementTypes.CONTENT_EXPRESSION.javascript))
+        .inFile(psiFile(SvelteHtmlFile::class.java)),
       SvelteKeywordCompletionProvider()
     )
     extend(

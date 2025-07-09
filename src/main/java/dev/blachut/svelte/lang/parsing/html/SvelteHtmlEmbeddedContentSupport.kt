@@ -9,6 +9,7 @@ import com.intellij.lexer.*
 import com.intellij.psi.tree.IElementType
 import com.intellij.xml.util.HtmlUtil
 import dev.blachut.svelte.lang.SvelteJSLanguage
+import dev.blachut.svelte.lang.SvelteLanguageMode
 import dev.blachut.svelte.lang.SvelteTypeScriptLanguage
 import dev.blachut.svelte.lang.isTSLangValue
 import dev.blachut.svelte.lang.psi.SvelteHtmlRawTextElementType
@@ -20,6 +21,7 @@ class SvelteHtmlEmbeddedContentSupport : HtmlEmbeddedContentSupport {
   override fun isEnabled(lexer: BaseHtmlLexer): Boolean {
     return lexer is SvelteHtmlLexer
   }
+
 
   override fun createEmbeddedContentProviders(lexer: BaseHtmlLexer): List<HtmlEmbeddedContentProvider> =
     listOf(
@@ -41,11 +43,16 @@ class SvelteHtmlEmbeddedContentSupport : HtmlEmbeddedContentSupport {
       CSSLanguage.INSTANCE.dialects.firstOrNull { it.id.equals(styleLang, ignoreCase = true) }
       ?: super.styleLanguage(styleLang)
 
-    override fun scriptEmbedmentInfo(mimeType: String?): HtmlEmbedmentInfo =
-      if (isTSLangValue(mimeType))
+    override fun scriptEmbedmentInfo(mimeType: String?): HtmlEmbedmentInfo {
+      val lexer = lexer as SvelteHtmlLexer
+      return if (isTSLangValue(mimeType)) {
+        lexer.langMode = SvelteLanguageMode.TypeScript
         HtmlLanguageEmbedmentInfo(SvelteJSElementTypes.EMBEDDED_CONTENT_MODULE_TS, SvelteTypeScriptLanguage.INSTANCE)
-      else
+      } else {
+        lexer.langMode = SvelteLanguageMode.Javascript
         HtmlLanguageEmbedmentInfo(SvelteJSElementTypes.EMBEDDED_CONTENT_MODULE, SvelteJSLanguage.INSTANCE)
+      }
+    }
   }
 
   class SvelteHtmlRawTextTagContentProvider(lexer: BaseHtmlLexer) : HtmlRawTextTagContentProvider(lexer) {

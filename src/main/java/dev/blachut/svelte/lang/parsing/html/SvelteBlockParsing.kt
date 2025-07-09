@@ -12,11 +12,11 @@ import org.jetbrains.annotations.Nls
 object SvelteBlockParsing {
   fun startBlock(tagToken: IElementType, tagMarker: Marker, fragmentMarker: Marker): SvelteBlock {
     val parsingDefinition = when (tagToken) {
-      SvelteTagElementTypes.IF_START -> IF_BLOCK_DEFINITION
-      SvelteTagElementTypes.EACH_START -> EACH_BLOCK_DEFINITION
-      SvelteTagElementTypes.AWAIT_START -> AWAIT_BLOCK_DEFINITION
-      SvelteTagElementTypes.KEY_START -> KEY_BLOCK_DEFINITION
-      SvelteTagElementTypes.SNIPPET_START -> SNIPPET_BLOCK_DEFINITION
+      SvelteTagElementTypes.IF_START, SvelteTagElementTypes.IF_START_TS -> IF_BLOCK_DEFINITION
+      SvelteTagElementTypes.EACH_START, SvelteTagElementTypes.EACH_START_TS -> EACH_BLOCK_DEFINITION
+      SvelteTagElementTypes.AWAIT_START, SvelteTagElementTypes.AWAIT_START_TS -> AWAIT_BLOCK_DEFINITION
+      SvelteTagElementTypes.KEY_START, SvelteTagElementTypes.KEY_START_TS -> KEY_BLOCK_DEFINITION
+      SvelteTagElementTypes.SNIPPET_START, SvelteTagElementTypes.SNIPPET_START_TS -> SNIPPET_BLOCK_DEFINITION
       else -> throw IllegalArgumentException("Expected start tag token")
     }
 
@@ -29,7 +29,10 @@ object SvelteBlockParsing {
   private val IF_BLOCK_DEFINITION = BlockParsingDefinition(
     blockToken = SvelteElementTypes.IF_BLOCK,
     primaryBranchToken = SvelteElementTypes.IF_TRUE_BRANCH,
-    innerTagToBranchTokens = mapOf(SvelteTagElementTypes.ELSE_CLAUSE to SvelteElementTypes.IF_ELSE_BRANCH),
+    innerTagToBranchTokens = mapOf(
+      SvelteTagElementTypes.ELSE_CLAUSE to SvelteElementTypes.IF_ELSE_BRANCH,
+      SvelteTagElementTypes.ELSE_CLAUSE_TS to SvelteElementTypes.IF_ELSE_BRANCH
+    ),
     endTag = SvelteTagElementTypes.IF_END,
     missingEndTagMessage = SvelteBundle.message("svelte.parsing.if.is.not.closed")
   )
@@ -37,7 +40,10 @@ object SvelteBlockParsing {
   private val EACH_BLOCK_DEFINITION = BlockParsingDefinition(
     blockToken = SvelteElementTypes.EACH_BLOCK,
     primaryBranchToken = SvelteElementTypes.EACH_LOOP_BRANCH,
-    innerTagToBranchTokens = mapOf(SvelteTagElementTypes.ELSE_CLAUSE to SvelteElementTypes.EACH_ELSE_BRANCH),
+    innerTagToBranchTokens = mapOf(
+      SvelteTagElementTypes.ELSE_CLAUSE to SvelteElementTypes.EACH_ELSE_BRANCH,
+      SvelteTagElementTypes.ELSE_CLAUSE_TS to SvelteElementTypes.EACH_ELSE_BRANCH
+    ),
     endTag = SvelteTagElementTypes.EACH_END,
     missingEndTagMessage = SvelteBundle.message("svelte.parsing.each.is.not.closed")
   )
@@ -47,7 +53,9 @@ object SvelteBlockParsing {
     primaryBranchToken = SvelteElementTypes.AWAIT_MAIN_BRANCH,
     innerTagToBranchTokens = mapOf(
       SvelteTagElementTypes.THEN_CLAUSE to SvelteElementTypes.AWAIT_THEN_BRANCH,
-      SvelteTagElementTypes.CATCH_CLAUSE to SvelteElementTypes.AWAIT_CATCH_BRANCH
+      SvelteTagElementTypes.THEN_CLAUSE_TS to SvelteElementTypes.AWAIT_THEN_BRANCH,
+      SvelteTagElementTypes.CATCH_CLAUSE to SvelteElementTypes.AWAIT_CATCH_BRANCH,
+      SvelteTagElementTypes.CATCH_CLAUSE_TS to SvelteElementTypes.AWAIT_CATCH_BRANCH
     ),
     endTag = SvelteTagElementTypes.AWAIT_END,
     missingEndTagMessage = SvelteBundle.message("svelte.parsing.await.is.not.closed")

@@ -118,7 +118,7 @@ abstract class SvelteXmlTagBlockBase(
     alignment: Alignment?,
     indent: Indent?
   ): ASTNode? {
-    if (child.elementType === CONTENT_EXPRESSION) {
+    if (CONTENT_EXPRESSION matches child.elementType) {
       result.add(SvelteExpressionBlock(child, indent, wrap, myXmlFormattingPolicy))
       return child
     }

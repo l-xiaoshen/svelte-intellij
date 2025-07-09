@@ -7,10 +7,8 @@ import com.intellij.psi.tree.IElementType
 import com.intellij.psi.xml.XmlElementType
 import com.intellij.psi.xml.XmlTokenType
 import com.intellij.xml.parsing.XmlParserBundle
-import dev.blachut.svelte.lang.SvelteBundle
+import dev.blachut.svelte.lang.*
 import dev.blachut.svelte.lang.directives.SvelteDirectiveUtil
-import dev.blachut.svelte.lang.isSvelteComponentTag
-import dev.blachut.svelte.lang.isTokenAfterWhiteSpace
 import dev.blachut.svelte.lang.psi.*
 
 class SvelteHtmlParsing(builder: PsiBuilder) : HtmlParsing(builder) {
@@ -22,22 +20,18 @@ class SvelteHtmlParsing(builder: PsiBuilder) : HtmlParsing(builder) {
     if (SvelteTagElementTypes.START_TAGS.contains(tagToken)) {
       val openedBlock = SvelteBlockParsing.startBlock(tagToken, tagMarker, builder.mark())
       pushItemToStack(openedBlock)
-    }
-    else if (SvelteTagElementTypes.INNER_TAGS.contains(tagToken)) {
+    } else if (SvelteTagElementTypes.INNER_TAGS.contains(tagToken)) {
       if (currentBlock != null && currentBlock.isMatchingInnerTag(tagToken)) {
         flushIncompleteStackItemsWhile(tagMarker) { it !is SvelteBlock }
         currentBlock.handleInnerTag(tagToken, tagMarker, builder.mark())
-      }
-      else {
+      } else {
         tagMarker.precede().errorBefore(SvelteBundle.message("svelte.parsing.error.unexpected.inner.tag"), tagMarker)
       }
-    }
-    else if (SvelteTagElementTypes.END_TAGS.contains(tagToken)) {
+    } else if (SvelteTagElementTypes.END_TAGS.contains(tagToken)) {
       if (currentBlock != null && currentBlock.isMatchingEndTag(tagToken)) {
         flushIncompleteStackItemsWhile(tagMarker) { it !is SvelteBlock }
         completeTopStackItemBefore(tagMarker)
-      }
-      else {
+      } else {
         tagMarker.precede().errorBefore(SvelteBundle.message("svelte.parsing.error.unexpected.end.tag"), tagMarker)
       }
     }
@@ -50,8 +44,7 @@ class SvelteHtmlParsing(builder: PsiBuilder) : HtmlParsing(builder) {
         if (it is SvelteBlock) {
           result = it
           false
-        }
-        else true
+        } else true
       }
       return result
     }
@@ -66,8 +59,7 @@ class SvelteHtmlParsing(builder: PsiBuilder) : HtmlParsing(builder) {
         text?.done(XmlElementType.XML_TEXT)
         text = null
         parseSvelteTag()
-      }
-      else {
+      } else {
         if (currentBlock != null && text == null) {
           text = builder.mark()
         }
@@ -114,9 +106,19 @@ class SvelteHtmlParsing(builder: PsiBuilder) : HtmlParsing(builder) {
     return token() === SvelteTokenTypes.START_MUSTACHE
   }
 
+  val PsiBuilder.langMode: SvelteLanguageMode
+    get() {
+      val mode = getUserData(SvelteLanguage.LANG_MODE)
+      if (mode == null) {
+        kotlin.error("Svelte language mode not specified")
+      } else {
+        return mode
+      }
+    }
+
   override fun parseCustomTagHeaderContent() {
     val att = mark()
-    parseAttributeExpression(SvelteJSLazyElementTypes.SPREAD_OR_SHORTHAND)
+    parseAttributeExpression(SvelteJSLazyElementTypes.SPREAD_OR_SHORTHAND.select(builder.langMode))
     att.done(SvelteHtmlElementTypes.SVELTE_HTML_ATTRIBUTE)
   }
 
@@ -129,7 +131,12 @@ class SvelteHtmlParsing(builder: PsiBuilder) : HtmlParsing(builder) {
     advance()
     if (token() === XmlTokenType.XML_EQ) {
       advance()
-      parseAttributeValue(SvelteDirectiveUtil.chooseValueElementType(attributeName!!))
+      parseAttributeValue(
+        SvelteDirectiveUtil.chooseValueElementType(
+          attributeName!!,
+          mode = builder.getUserData(SvelteLanguage.LANG_MODE)!!
+        )
+      )
     }
 
     att.done(SvelteHtmlElementTypes.SVELTE_HTML_ATTRIBUTE)
@@ -141,10 +148,10 @@ class SvelteHtmlParsing(builder: PsiBuilder) : HtmlParsing(builder) {
       while (true) {
         val tt = token()
         if (tt == null ||
-            tt === XmlTokenType.XML_ATTRIBUTE_VALUE_END_DELIMITER ||
-            tt === XmlTokenType.XML_END_TAG_START ||
-            tt === XmlTokenType.XML_EMPTY_ELEMENT_END ||
-            tt === XmlTokenType.XML_START_TAG_START
+          tt === XmlTokenType.XML_ATTRIBUTE_VALUE_END_DELIMITER ||
+          tt === XmlTokenType.XML_END_TAG_START ||
+          tt === XmlTokenType.XML_EMPTY_ELEMENT_END ||
+          tt === XmlTokenType.XML_START_TAG_START
         ) {
           break
         }
@@ -153,32 +160,26 @@ class SvelteHtmlParsing(builder: PsiBuilder) : HtmlParsing(builder) {
           val error = mark()
           advance()
           error.error(XmlParserBundle.message("xml.parsing.unescaped.ampersand.or.nonterminated.character.entity.reference"))
-        }
-        else if (tt === XmlTokenType.XML_ENTITY_REF_TOKEN) {
+        } else if (tt === XmlTokenType.XML_ENTITY_REF_TOKEN) {
           parseReference()
-        }
-        else if (tt === SvelteTokenTypes.START_MUSTACHE) {
+        } else if (tt === SvelteTokenTypes.START_MUSTACHE) {
           parseAttributeExpression(elementType)
-        }
-        else {
+        } else {
           advance()
         }
       }
 
       if (token() === XmlTokenType.XML_ATTRIBUTE_VALUE_END_DELIMITER) {
         advance()
-      }
-      else {
+      } else {
         error(XmlParserBundle.message("xml.parsing.unclosed.attribute.value"))
       }
-    }
-    else {
+    } else {
       // Unquoted attr value. Unlike unmodified IntelliJ HTML this isn't necessary single token
       while (token() === XmlTokenType.XML_ATTRIBUTE_VALUE_TOKEN || token() === SvelteTokenTypes.START_MUSTACHE) {
         if (token() === SvelteTokenTypes.START_MUSTACHE) {
           parseAttributeExpression(elementType)
-        }
-        else {
+        } else {
           advance()
         }
 

@@ -11,6 +11,8 @@ import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.psi.xml.XmlDocument
 import com.intellij.psi.xml.XmlTag
 import com.intellij.xml.util.HtmlUtil
+import com.intellij.xml.util.HtmlUtil.LANG_ATTRIBUTE_NAME
+import dev.blachut.svelte.lang.isTSLangValue
 import dev.blachut.svelte.lang.parsing.html.SvelteHtmlFileElementType
 import dev.blachut.svelte.lang.psi.blocks.SvelteSnippetBlock
 
@@ -23,7 +25,7 @@ fun isModuleScript(tag: XmlTag?): Boolean {
 }
 
 fun hasModuleAttribute(tag: XmlTag) = tag.getAttribute("module") != null // Svelte 5
-                                       || tag.getAttributeValue("context") == "module" // Svelte 3-4
+  || tag.getAttributeValue("context") == "module" // Svelte 3-4
 
 fun findAncestorScript(place: PsiElement): XmlTag? {
   // TODO optimize for XmlTag, or only walk up from JSElements?
@@ -33,7 +35,8 @@ fun findAncestorScript(place: PsiElement): XmlTag? {
   return parentScript as XmlTag?
 }
 
-class SvelteHtmlFile(viewProvider: FileViewProvider) : HtmlFileImpl(viewProvider, SvelteHtmlFileElementType.FILE), JSModuleStatusOwner {
+class SvelteHtmlFile(viewProvider: FileViewProvider) : HtmlFileImpl(viewProvider, SvelteHtmlFileElementType.FILE),
+  JSModuleStatusOwner {
   override fun getModuleStatus(): JSModuleStatusOwner.ModuleStatus = JSModuleStatusOwner.ModuleStatus.ES6
 
   val moduleScript
@@ -49,7 +52,18 @@ class SvelteHtmlFile(viewProvider: FileViewProvider) : HtmlFileImpl(viewProvider
       it is XmlTag && HtmlUtil.isScriptTag(it) && !hasModuleAttribute(it)
     } as XmlTag?
 
-  override fun processDeclarations(processor: PsiScopeProcessor, state: ResolveState, lastParent: PsiElement?, place: PsiElement): Boolean {
+  val componentTypescript: Boolean
+    get() {
+      val langAttr = this.instanceScript?.getAttribute(LANG_ATTRIBUTE_NAME)?.value
+      return isTSLangValue(langAttr)
+    }
+
+  override fun processDeclarations(
+    processor: PsiScopeProcessor,
+    state: ResolveState,
+    lastParent: PsiElement?,
+    place: PsiElement
+  ): Boolean {
     val document = document ?: return true
 
     // TODO ScriptSupportUtil.processDeclarations caches found script tags
@@ -57,17 +71,15 @@ class SvelteHtmlFile(viewProvider: FileViewProvider) : HtmlFileImpl(viewProvider
     if (isModuleScript(parentScript)) {
       // place is inside module script, nothing more to process
       return true
-    }
-    else if (parentScript != null) {
+    } else if (parentScript != null) {
       // place is inside instance script, and its declarations were already processed, process template declarations, then module script
       return processTopLevelTemplateDeclarations(processor, state, lastParent, place, document) &&
-             processScriptDeclarations(processor, state, lastParent, place, moduleScript)
-    }
-    else {
+        processScriptDeclarations(processor, state, lastParent, place, moduleScript)
+    } else {
       // place is inside template expression, process template declarations, then instance and then module script
       return processTopLevelTemplateDeclarations(processor, state, lastParent, place, document) &&
-             processScriptDeclarations(processor, state, lastParent, place, instanceScript) &&
-             processScriptDeclarations(processor, state, lastParent, place, moduleScript)
+        processScriptDeclarations(processor, state, lastParent, place, instanceScript) &&
+        processScriptDeclarations(processor, state, lastParent, place, moduleScript)
     }
   }
 

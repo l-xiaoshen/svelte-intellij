@@ -26,8 +26,8 @@ class SvelteAutoPopupHandler : TypedHandlerDelegate() {
 
     val offset = editor.caretModel.offset
     val element = file.findElementAt(offset)
-                  ?: file.findElementAt(offset - 1)
-                  ?: return Result.CONTINUE
+      ?: file.findElementAt(offset - 1)
+      ?: return Result.CONTINUE
 
     if (element.parent.elementType == SvelteHtmlElementTypes.SVELTE_HTML_TAG) {
       if (attributeExpectedChars.contains(charTyped)) {
@@ -41,7 +41,7 @@ class SvelteAutoPopupHandler : TypedHandlerDelegate() {
       return handle(project, editor)
     }
 
-    if (element.parent.elementType == SvelteJSLazyElementTypes.CONTENT_EXPRESSION) {
+    if (SvelteJSLazyElementTypes.CONTENT_EXPRESSION matches element.parent.elementType) {
       if (charTyped == '#' || charTyped == '@') {
         return handle(project, editor)
       }

@@ -49,8 +49,9 @@ class SvelteInspectionSuppressor : InspectionSuppressor {
     if (inspectionId.equalsName<CommaExpressionJSInspection>()) {
       val parent = element.parents(false).first { it is JSEmbeddedContent || it is JSStatement }
       if (parent is JSEmbeddedContent &&
-          parent.elementType == SvelteJSLazyElementTypes.CONTENT_EXPRESSION &&
-          parent.children.any { it.node.elementType == SvelteTokenTypes.DEBUG_KEYWORD }) {
+        SvelteJSLazyElementTypes.CONTENT_EXPRESSION matches parent.iElementType &&
+        parent.children.any { it.node.elementType == SvelteTokenTypes.DEBUG_KEYWORD }
+      ) {
         return true
       }
     }
@@ -74,11 +75,12 @@ class SvelteInspectionSuppressor : InspectionSuppressor {
     }
     if (inspectionId.equalsName<JSUnresolvedReferenceInspection>() || inspectionId.equalsName<TypeScriptUnresolvedReferenceInspection>()) {
       if (element.parent is JSReferenceExpression
-          && element
-            .parentOfTypes(JSObjectLiteralExpression::class, JSArrayLiteralExpression::class)
-            ?.parentOfType<JSAssignmentExpression>()
-            ?.parentOfType<JSLabeledStatement>()
-            ?.takeIf { it.label == SvelteReactiveDeclarationsUtil.REACTIVE_LABEL } != null) {
+        && element
+          .parentOfTypes(JSObjectLiteralExpression::class, JSArrayLiteralExpression::class)
+          ?.parentOfType<JSAssignmentExpression>()
+          ?.parentOfType<JSLabeledStatement>()
+          ?.takeIf { it.label == SvelteReactiveDeclarationsUtil.REACTIVE_LABEL } != null
+      ) {
         return true // likely suppresses too much
       }
     }
@@ -86,18 +88,20 @@ class SvelteInspectionSuppressor : InspectionSuppressor {
       // reactive declaration references
       val referenceExpression = element.parent as? JSReferenceExpression
       if (referenceExpression != null
-          && referenceExpression.qualifier == null
-          && referenceExpression.multiResolve(false).isNotEmpty()) {
-        return true;
+        && referenceExpression.qualifier == null
+        && referenceExpression.multiResolve(false).isNotEmpty()
+      ) {
+        return true
       }
     }
     if (inspectionId.equalsName<JSUnresolvedReferenceInspection>()
-        || inspectionId.equalsName<TypeScriptUnresolvedReferenceInspection>()
-        || inspectionId.equalsName<TypeScriptCheckImportInspection>()) {
+      || inspectionId.equalsName<TypeScriptUnresolvedReferenceInspection>()
+      || inspectionId.equalsName<TypeScriptCheckImportInspection>()
+    ) {
       // destructured reactive declaration references, etc.
       val referenceExpression = element.parent as? JSPsiReferenceElement
       return referenceExpression != null
-             && tryRecheckResolveResults(referenceExpression)
+        && tryRecheckResolveResults(referenceExpression)
     }
     if (inspectionId.equalsName<JSUndeclaredVariableInspection>()) { // WEB-63611
       return true

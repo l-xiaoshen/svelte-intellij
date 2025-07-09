@@ -12,6 +12,7 @@ import com.intellij.psi.ResolveState
 import com.intellij.psi.impl.source.xml.XmlAttributeImpl
 import com.intellij.psi.scope.PsiScopeProcessor
 import com.intellij.psi.tree.DefaultRoleFinder
+import com.intellij.psi.tree.IElementType
 import com.intellij.psi.tree.RoleFinder
 import com.intellij.psi.util.CachedValueProvider
 import com.intellij.psi.util.CachedValuesManager
@@ -21,6 +22,7 @@ import com.intellij.psi.xml.XmlElement
 import dev.blachut.svelte.lang.directives.SvelteDirectiveTypes
 import dev.blachut.svelte.lang.directives.SvelteDirectiveUtil
 import dev.blachut.svelte.lang.parsing.html.SvelteDirectiveParser
+import java.util.function.Supplier
 
 class SvelteHtmlAttribute : XmlAttributeImpl(SvelteHtmlElementTypes.SVELTE_HTML_ATTRIBUTE) {
   val directive get() = calcDirective(this)
@@ -74,8 +76,7 @@ class SvelteHtmlAttribute : XmlAttributeImpl(SvelteHtmlElementTypes.SVELTE_HTML_
 
     return if (jsNode.firstChildNode.elementType === JSStubElementTypes.SPREAD_EXPRESSION) {
       "<spread>"
-    }
-    else {
+    } else {
       jsNode.text
     }
   }
@@ -85,8 +86,7 @@ class SvelteHtmlAttribute : XmlAttributeImpl(SvelteHtmlElementTypes.SVELTE_HTML_
     if (directive != null) {
       val referenceFactory = if (valueElement == null) {
         directive.directiveType.shorthandReferenceFactory
-      }
-      else {
+      } else {
         directive.directiveType.longhandReferenceFactory
       }
       val ref = referenceFactory?.invoke(this, directive.specifiers[0].rangeInName)
@@ -112,7 +112,14 @@ class SvelteHtmlAttribute : XmlAttributeImpl(SvelteHtmlElementTypes.SVELTE_HTML_
   }
 
   companion object {
-    val SPREAD_OR_SHORTHAND_FINDER: RoleFinder = DefaultRoleFinder(SvelteJSLazyElementTypes.SPREAD_OR_SHORTHAND)
+    val SPREAD_OR_SHORTHAND_FINDER: RoleFinder = DefaultRoleFinder(
+      Supplier<Array<IElementType>> {
+        arrayOf(
+          SvelteJSLazyElementTypes.SPREAD_OR_SHORTHAND.typescript,
+          SvelteJSLazyElementTypes.SPREAD_OR_SHORTHAND.javascript
+        )
+      }
+    )
 
     fun calcDirective(attribute: SvelteHtmlAttribute): SvelteDirectiveUtil.Directive? {
       return CachedValuesManager.getCachedValue(attribute) {
@@ -128,8 +135,7 @@ class SvelteHtmlAttribute : XmlAttributeImpl(SvelteHtmlElementTypes.SVELTE_HTML_
         val implicit =
           if (attribute.directive?.directiveType == SvelteDirectiveTypes.LET && attribute.valueElement == null) {
             SvelteDirectiveImplicitParameter(attribute.localName, attribute)
-          }
-          else {
+          } else {
             null
           }
 

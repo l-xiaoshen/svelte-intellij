@@ -57,11 +57,11 @@ class SvelteTagEndTypedHandler : TypedHandlerDelegate() {
     val suffix = if (beforeEndBrace) "" else "}"
 
     val matchingTag = when (block.startTag.type) {
-      SvelteTagElementTypes.IF_START -> prefix + "if" + suffix
-      SvelteTagElementTypes.EACH_START -> prefix + "each" + suffix
-      SvelteTagElementTypes.AWAIT_START -> prefix + "await" + suffix
-      SvelteTagElementTypes.KEY_START -> prefix + "key" + suffix
-      SvelteTagElementTypes.SNIPPET_START -> prefix + "snippet" + suffix
+      SvelteTagElementTypes.IF_START, SvelteTagElementTypes.IF_START_TS -> prefix + "if" + suffix
+      SvelteTagElementTypes.EACH_START, SvelteTagElementTypes.EACH_START_TS -> prefix + "each" + suffix
+      SvelteTagElementTypes.AWAIT_START, SvelteTagElementTypes.AWAIT_START_TS -> prefix + "await" + suffix
+      SvelteTagElementTypes.KEY_START, SvelteTagElementTypes.KEY_START_TS -> prefix + "key" + suffix
+      SvelteTagElementTypes.SNIPPET_START, SvelteTagElementTypes.SNIPPET_START_TS -> prefix + "snippet" + suffix
       else -> return
     }
 

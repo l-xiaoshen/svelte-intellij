@@ -6,11 +6,12 @@ import com.intellij.lang.javascript.parsing.FunctionParser
 import com.intellij.lang.javascript.parsing.JavaScriptParser
 import com.intellij.psi.tree.TokenSet
 import dev.blachut.svelte.lang.SvelteBundle
+import dev.blachut.svelte.lang.SvelteLanguageMode
 import dev.blachut.svelte.lang.parsing.html.SvelteTagParsing
 import dev.blachut.svelte.lang.parsing.js.markupContextKey
 
 object SvelteTagElementTypes {
-  val IF_START = object : SvelteJSBlockLazyElementType("IF_START") {
+  private object IF : SvelteBlockLazyElementType {
     override val noTokensErrorMessage = "expression expected"
 
     override fun parseTokens(builder: PsiBuilder, parser: JavaScriptParser) {
@@ -22,7 +23,10 @@ object SvelteTagElementTypes {
     }
   }
 
-  val ELSE_CLAUSE = object : SvelteJSBlockLazyElementType("ELSE_CLAUSE") {
+  val IF_START = createJS("IF_START", IF)
+  val IF_START_TS = createTS("IF_START", IF)
+
+  private object ELSE : SvelteBlockLazyElementType {
     override val noTokensErrorMessage = "expression expected"
 
     override fun parseTokens(builder: PsiBuilder, parser: JavaScriptParser) {
@@ -37,7 +41,10 @@ object SvelteTagElementTypes {
     }
   }
 
-  val EACH_START = object : SvelteJSBlockLazyElementType("EACH_START") {
+  val ELSE_CLAUSE = createJS("ELSE_CLAUSE", ELSE)
+  val ELSE_CLAUSE_TS = createTS("ELSE_CLAUSE", ELSE)
+
+  private object EACH : SvelteBlockLazyElementType {
     override val noTokensErrorMessage = "expression expected"
 
     override fun parseTokens(builder: PsiBuilder, parser: JavaScriptParser) {
@@ -50,8 +57,7 @@ object SvelteTagElementTypes {
 
       if (builder.tokenType === SvelteTokenTypes.AS_KEYWORD) {
         builder.advanceLexer()
-      }
-      else {
+      } else {
         builder.error(SvelteBundle.message("svelte.parsing.error.as.expected"))
       }
 
@@ -70,8 +76,7 @@ object SvelteTagElementTypes {
 
         if (builder.tokenType === JSTokenTypes.RPAR) {
           builder.advanceLexer()
-        }
-        else {
+        } else {
           builder.error(SvelteBundle.message("svelte.parsing.error.expected.closing.brace"))
         }
         keyExpressionMarker.done(TAG_DEPENDENT_EXPRESSION)
@@ -79,7 +84,10 @@ object SvelteTagElementTypes {
     }
   }
 
-  val AWAIT_START = object : SvelteJSBlockLazyElementType("AWAIT_START") {
+  val EACH_START = createJS("EACH_START", EACH)
+  val EACH_START_TS = createTS("EACH_START", EACH)
+
+  private object AWAIT : SvelteBlockLazyElementType {
     override val noTokensErrorMessage = "expression expected"
 
     override fun parseTokens(builder: PsiBuilder, parser: JavaScriptParser) {
@@ -87,23 +95,27 @@ object SvelteTagElementTypes {
       SvelteTagParsing.parseNotAllowedWhitespace(builder, "#")
       builder.advanceLexer() // SvelteTokenTypes.AWAIT_KEYWORD
 
+//      TypeScriptParser
       parser.expressionParser.parseExpression()
 
       if (builder.tokenType === JSTokenTypes.IDENTIFIER && builder.tokenText == "then") {
         builder.remapCurrentToken(SvelteTokenTypes.THEN_KEYWORD)
         builder.advanceLexer()
 
-        parser.expressionParser.parseDestructuringElement(SvelteJSElementTypes.PARAMETER, false, false)
+        parser.expressionParser.parseDestructuringElement(SvelteJSElementTypes.PARAMETER, true, false)
       }
 
       if (builder.tokenType === SvelteTokenTypes.CATCH_KEYWORD) {
         builder.advanceLexer()
-        parser.expressionParser.parseDestructuringElement(SvelteJSElementTypes.PARAMETER, false, false)
+        parser.expressionParser.parseDestructuringElement(SvelteJSElementTypes.PARAMETER, true, false)
       }
     }
   }
 
-  val THEN_CLAUSE = object : SvelteJSBlockLazyElementType("THEN_CLAUSE") {
+  val AWAIT_START = createJS("AWAIT_START", AWAIT)
+  val AWAIT_START_TS = createTS("AWAIT_START", AWAIT)
+
+  private object THEN : SvelteBlockLazyElementType {
     override val noTokensErrorMessage = "expression expected"
 
     override fun parseTokens(builder: PsiBuilder, parser: JavaScriptParser) {
@@ -117,7 +129,10 @@ object SvelteTagElementTypes {
     }
   }
 
-  val CATCH_CLAUSE = object : SvelteJSBlockLazyElementType("CATCH_CLAUSE") {
+  val THEN_CLAUSE = createJS("THEN_CLAUSE", THEN)
+  val THEN_CLAUSE_TS = createTS("THEN_CLAUSE", THEN)
+
+  private object CATCH : SvelteBlockLazyElementType {
     override val noTokensErrorMessage = "expression expected"
 
     override fun parseTokens(builder: PsiBuilder, parser: JavaScriptParser) {
@@ -129,7 +144,10 @@ object SvelteTagElementTypes {
     }
   }
 
-  val KEY_START = object : SvelteJSBlockLazyElementType("KEY_START") {
+  val CATCH_CLAUSE = createJS("CATCH_CLAUSE", CATCH)
+  val CATCH_CLAUSE_TS = createTS("CATCH_CLAUSE", CATCH)
+
+  private object KEY : SvelteBlockLazyElementType {
     override val noTokensErrorMessage = "expression expected"
 
     override fun parseTokens(builder: PsiBuilder, parser: JavaScriptParser) {
@@ -141,7 +159,11 @@ object SvelteTagElementTypes {
     }
   }
 
-  val SNIPPET_START = object : SvelteJSBlockLazyElementType("SNIPPET_START") {
+  val KEY_START = createJS("KEY_START", KEY)
+  val KEY_START_TS = createTS("KEY_START", KEY)
+
+
+  private object SNIPPET : SvelteBlockLazyElementType {
     override val noTokensErrorMessage = "expression expected"
 
     override fun parseTokens(builder: PsiBuilder, parser: JavaScriptParser) {
@@ -154,13 +176,15 @@ object SvelteTagElementTypes {
         builder.putUserData(FunctionParser.methodsEmptinessKey, FunctionParser.MethodEmptiness.ALWAYS)
         val mark = builder.mark()
         parser.functionParser.parseFunctionNoMarker(FunctionParser.Context.SOURCE_ELEMENT, mark)
-      }
-      finally {
+      } finally {
         builder.putUserData(FunctionParser.methodsEmptinessKey, null)
         builder.putUserData(markupContextKey, null)
       }
     }
   }
+
+  val SNIPPET_START = createJS("SNIPPET_START", SNIPPET)
+  val SNIPPET_START_TS = createTS("SNIPPET_START", SNIPPET)
 
   val TAG_DEPENDENT_EXPRESSION = SvelteJSElementType("TAG_DEPENDENT_EXPRESSION")
 
@@ -170,9 +194,48 @@ object SvelteTagElementTypes {
   val KEY_END = SvelteJSElementType("KEY_END")
   val SNIPPET_END = SvelteJSElementType("SNIPPET_END")
 
-  val START_TAGS = TokenSet.create(IF_START, EACH_START, AWAIT_START, KEY_START, SNIPPET_START)
-  val INNER_TAGS = TokenSet.create(ELSE_CLAUSE, THEN_CLAUSE, CATCH_CLAUSE)
+  val START_TAGS = TokenSet.create(
+    IF_START, IF_START_TS,
+    EACH_START, EACH_START_TS,
+    AWAIT_START, AWAIT_START_TS,
+    KEY_START, KEY_START_TS,
+    SNIPPET_START, SNIPPET_START_TS
+  )
+  val INNER_TAGS = TokenSet.create(
+    ELSE_CLAUSE, ELSE_CLAUSE_TS,
+    THEN_CLAUSE, THEN_CLAUSE_TS,
+    CATCH_CLAUSE, CATCH_CLAUSE_TS
+  )
   val END_TAGS = TokenSet.create(IF_END, EACH_END, AWAIT_END, KEY_END, SNIPPET_END)
   val INITIAL_TAGS = TokenSet.orSet(START_TAGS, INNER_TAGS)
   val TAIL_TAGS = TokenSet.orSet(INNER_TAGS, END_TAGS)
 }
+
+
+private fun createJS(debugName: String, impl: SvelteBlockLazyElementType): SvelteJSBlockLazyElementType {
+  return create(debugName, impl, SvelteLanguageMode.Javascript)
+}
+
+private fun createTS(debugName: String, impl: SvelteBlockLazyElementType): SvelteJSBlockLazyElementType {
+  return create("${debugName}_TS", impl, SvelteLanguageMode.TypeScript)
+}
+
+private fun create(
+  debugName: String,
+  impl: SvelteBlockLazyElementType,
+  mode: SvelteLanguageMode,
+): SvelteJSBlockLazyElementType {
+  return object : SvelteJSBlockLazyElementType(debugName, mode) {
+    override val noTokensErrorMessage: String
+      get() = impl.noTokensErrorMessage
+
+    override fun parseTokens(
+      builder: PsiBuilder,
+      parser: JavaScriptParser
+    ) {
+      impl.parseTokens(builder, parser)
+    }
+  }
+}
+
+

@@ -6,8 +6,31 @@ import com.intellij.openapi.util.TextRange
 import com.intellij.psi.PsiReference
 import com.intellij.psi.tree.IElementType
 import com.intellij.psi.xml.XmlTag
+import dev.blachut.svelte.lang.SvelteLanguageMode
 import dev.blachut.svelte.lang.psi.SvelteHtmlAttribute
 import dev.blachut.svelte.lang.psi.SvelteJSLazyElementTypes
+
+interface DualIElementType {
+  val javascript: IElementType
+  val typescript: IElementType
+
+  fun select(mode: SvelteLanguageMode): IElementType = when (mode) {
+    SvelteLanguageMode.TypeScript -> typescript
+    SvelteLanguageMode.Javascript -> javascript
+  }
+
+  infix fun matches(type: IElementType?): Boolean {
+    if (type == null) return false
+    return (type == javascript || type == typescript)
+  }
+}
+
+fun createDualIElementType(javascript: IElementType, typescript: IElementType): DualIElementType {
+  return object : DualIElementType {
+    override val javascript: IElementType get() = javascript
+    override val typescript: IElementType get() = typescript
+  }
+}
 
 open class DirectiveType(
   val prefix: String,
@@ -19,7 +42,7 @@ open class DirectiveType(
   val shorthandCompletionFactory: ((attribute: SvelteHtmlAttribute, parameters: CompletionParameters, result: CompletionResultSet) -> Unit)?,
   val longhandReferenceFactory: ((element: SvelteHtmlAttribute, rangeInElement: TextRange) -> PsiReference)?,
   val longhandCompletionFactory: ((attribute: SvelteHtmlAttribute, parameters: CompletionParameters, result: CompletionResultSet) -> Unit)?,
-  val valueElementType: IElementType = SvelteJSLazyElementTypes.ATTRIBUTE_EXPRESSION,
+  val valueElementType: DualIElementType = SvelteJSLazyElementTypes.ATTRIBUTE_EXPRESSION,
   val uniquenessSelector: Unit = Unit, // TODO
 ) {
   val delimitedPrefix: String get() = prefix + SvelteDirectiveUtil.DIRECTIVE_SEPARATOR
