@@ -15,7 +15,7 @@ import dev.blachut.svelte.lang.parsing.html.SvelteJSExpressionLexer
 interface SvelteBlockLazyElementType {
   val noTokensErrorMessage: String get() = "expression expected"
 
-  fun parseTokens(builder: PsiBuilder, parser: JavaScriptParser)
+  fun parseTokens(builder: PsiBuilder, parser: JavaScriptParser, mode: SvelteLanguageMode)
 }
 
 abstract class SvelteJSBlockLazyElementType(debugName: String, val mode: SvelteLanguageMode) :
