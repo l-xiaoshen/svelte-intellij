@@ -1,14 +1,15 @@
 package dev.blachut.svelte.lang.psi
 
 import com.intellij.lang.PsiBuilder
+import com.intellij.lang.javascript.JSElementTypes
 import com.intellij.lang.javascript.JSTokenTypes
 import com.intellij.lang.javascript.parsing.FunctionParser
 import com.intellij.lang.javascript.parsing.JavaScriptParser
 import com.intellij.psi.tree.TokenSet
-import dev.blachut.svelte.lang.SvelteBundle
 import dev.blachut.svelte.lang.SvelteLanguageMode
 import dev.blachut.svelte.lang.parsing.html.SvelteTagParsing
 import dev.blachut.svelte.lang.parsing.js.markupContextKey
+import java.util.*
 
 object SvelteTagElementTypes {
   private object IF : SvelteBlockLazyElementType {
@@ -44,6 +45,15 @@ object SvelteTagElementTypes {
   val ELSE_CLAUSE = createJS("ELSE_CLAUSE", ELSE)
   val ELSE_CLAUSE_TS = createTS("ELSE_CLAUSE", ELSE)
 
+
+  enum class EachParseState {
+    PARSE_EXPRESSION,
+    AFTER_EXPRESSION,
+    PARSE_AS,
+    PARSE_ITEM,
+    PARSE_END,
+  }
+
   private object EACH : SvelteBlockLazyElementType {
     override val noTokensErrorMessage = "expression expected"
 
@@ -53,39 +63,146 @@ object SvelteTagElementTypes {
       builder.remapCurrentToken(SvelteTokenTypes.EACH_KEYWORD) // todo might be okay to remove all those remapCurrentToken
       builder.advanceLexer() // JSTokenTypes.IDENTIFIER -- fake EACH_KEYWORD
 
-      parser.expressionParser.parseExpression()
 
-      if (builder.tokenType === SvelteTokenTypes.AS_KEYWORD) {
-        builder.advanceLexer()
-      } else {
-        builder.error(SvelteBundle.message("svelte.parsing.error.as.expected"))
-      }
+      //todo, support index, and key
 
-      parser.expressionParser.parseDestructuringElement(SvelteJSElementTypes.PARAMETER, false, false)
+      var state = EachParseState.PARSE_EXPRESSION
 
-      if (builder.tokenType === JSTokenTypes.COMMA) {
-        builder.advanceLexer()
-        // TODO disallow destructuring
-        parser.expressionParser.parseDestructuringElement(SvelteJSElementTypes.PARAMETER, false, false)
-      }
 
-      if (builder.tokenType === JSTokenTypes.LPAR) {
-        val keyExpressionMarker = builder.mark()
-        builder.advanceLexer()
-        parser.expressionParser.parseExpression()
+      val markerQueue = Stack<PsiBuilder.Marker>()
+      
+      var i = 0
 
-        if (builder.tokenType === JSTokenTypes.RPAR) {
-          builder.advanceLexer()
-        } else {
-          builder.error(SvelteBundle.message("svelte.parsing.error.expected.closing.brace"))
+      while (i<10000000) {
+        i++
+        when (state) {
+          EachParseState.PARSE_EXPRESSION -> {
+            parser.expressionParser.parsePrimaryExpression()
+            markerQueue.push(builder.mark())
+            state = EachParseState.AFTER_EXPRESSION
+            continue
+          }
+
+          EachParseState.PARSE_AS -> {
+            builder.advanceLexer() // AS
+            state = EachParseState.PARSE_ITEM
+            continue
+          }
+
+          EachParseState.PARSE_END -> {
+            if (builder.tokenType === SvelteTokenTypes.END_MUSTACHE) {
+              builder.advanceLexer()
+              break
+            } else {
+              if (markerQueue.isEmpty()) {
+                builder.error("`end` expected")
+                break
+              } else {
+                markerQueue.pop().drop()
+                state = EachParseState.PARSE_EXPRESSION
+                continue
+              }
+            }
+          }
+
+          EachParseState.PARSE_ITEM -> {
+            if (builder.tokenType === JSTokenTypes.IDENTIFIER) {
+              builder.remapCurrentToken(SvelteJSElementTypes.CONST_TAG_VARIABLE)
+              builder.advanceLexer() // the IDENTIFIER
+              state = EachParseState.PARSE_END
+              continue
+            } else {
+              if (markerQueue.isEmpty()) {
+                builder.error("`as` or `end` expected")
+                break
+              } else {
+                markerQueue.pop().drop()
+                state = EachParseState.PARSE_EXPRESSION
+                continue
+              }
+            }
+          }
+
+          EachParseState.AFTER_EXPRESSION -> {
+            if (builder.tokenType === JSTokenTypes.AS_KEYWORD) {
+              state = EachParseState.PARSE_AS
+              continue
+            }
+
+            if (builder.tokenType === SvelteTokenTypes.END_MUSTACHE) {
+              state = EachParseState.PARSE_END
+              continue
+            }
+
+            if (markerQueue.isEmpty()) {
+              builder.error("`as` or `end` expected")
+              break
+            } else {
+              markerQueue.pop().drop()
+              state = EachParseState.PARSE_EXPRESSION
+              continue
+            }
+          }
         }
-        keyExpressionMarker.done(TAG_DEPENDENT_EXPRESSION)
       }
+
+      if (!markerQueue.isEmpty()) {
+        markerQueue.pop().done(JSElementTypes.EXPRESSION_STATEMENT)
+      }
+
+
+
+
+//
+//
+//      parser.expressionParser.parsePrimaryExpression()
+//      println("Parsing current is as?: ${builder.tokenType}")
+//      println("Parsing current next is as?: ${builder.lookAhead(1)}")
+//      builder.advanceLexer()
+//      (parser as TypeScriptParser).typeParser.parseType()
+//
+//
+//
+//
+//
+//      val m = builder.mark()
+//      if (builder.tokenType === SvelteTokenTypes.AS_KEYWORD) {
+//        builder.advanceLexer()
+//        m.done(SvelteTokenTypes.AS_KEYWORD)
+//      } else {
+//        builder.error(SvelteBundle.message("svelte.parsing.error.as.expected"))
+//      }
+//
+//      parser.expressionParser.parseDestructuringElement(SvelteJSElementTypes.PARAMETER, false, false)
+
+
+//      parser.expressionParser.parseDestructuringElement(SvelteJSElementTypes.PARAMETER, false, false)
+
+      // TODO
+
+//      if (builder.tokenType === JSTokenTypes.COMMA) {
+//        builder.advanceLexer()
+//        // TODO disallow destructuringparseDestructuringElement
+//        parser.expressionParser.parseDestructuringElement(SvelteJSElementTypes.PARAMETER, false, false)
+//      }
+//
+//      if (builder.tokenType === JSTokenTypes.LPAR) {
+//        val keyExpressionMarker = builder.mark()
+//        builder.advanceLexer()
+//        parser.expressionParser.parseExpression()
+//
+//        if (builder.tokenType === JSTokenTypes.RPAR) {
+//          builder.advanceLexer()
+//        } else {
+//          builder.error(SvelteBundle.message("svelte.parsing.error.expected.closing.brace"))
+//        }
+//        keyExpressionMarker.done(TAG_DEPENDENT_EXPRESSION)
+//      }
     }
   }
 
-  val EACH_START = createJS("EACH_START", EACH)
-  val EACH_START_TS = createTS("EACH_START", EACH)
+  val EACH_START = createJS("EACH_START", EACHParsing)
+  val EACH_START_TS = createTS("EACH_START", EACHParsing)
 
   private object AWAIT : SvelteBlockLazyElementType {
     override val noTokensErrorMessage = "expression expected"

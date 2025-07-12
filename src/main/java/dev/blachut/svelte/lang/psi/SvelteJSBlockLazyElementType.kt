@@ -42,7 +42,6 @@ abstract class SvelteJSBlockLazyElementType(debugName: String, val mode: SvelteL
 
 
     val rootMarker = builder.mark()
-
     if (builder.eof()) {
       builder.error(noTokensErrorMessage)
     } else {

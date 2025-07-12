@@ -51,6 +51,9 @@ repositories {
   mavenCentral()
   intellijPlatform {
     defaultRepositories()
+    releases()
+    snapshots()
+    marketplace()
   }
 }
 
@@ -82,7 +85,8 @@ dependencies {
 
     val type = providers.gradleProperty("platformType")
     val version = providers.gradleProperty("platformVersion")
-    webstorm("252.23591.33", useInstaller = true)
+//    intellijIdeaUltimate("2025.1.3", useInstaller = true)
+    webstorm("252.23892.125", useInstaller = true)
 //    plugins(intellijPlugins)
     bundledPlugin("JavaScript")
     bundledPlugin("JavaScriptDebugger")
